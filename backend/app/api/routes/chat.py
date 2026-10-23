@@ -10,6 +10,8 @@ from app.services.llm_service import generate_response, stream_response
 from app.schemas.learning import LearningExplanation
 from app.services.llm_service import generate_learning_explanation
 
+from app.services.llm_service import run_tool_assistant
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -43,3 +45,8 @@ async def chat_stream(request: ChatRequest):
 @router.post("/structured", response_model=LearningExplanation)
 async def structured_chat(request: ChatRequest):
     return await generate_learning_explanation(request.message)
+
+@router.post("/agent")
+async def chat_with_tools(request: ChatRequest):
+    answer = await run_tool_assistant(request.message)
+    return {"response": answer}
