@@ -7,6 +7,9 @@ from fastapi.responses import StreamingResponse
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.services.llm_service import generate_response, stream_response
 
+from app.schemas.learning import LearningExplanation
+from app.services.llm_service import generate_learning_explanation
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -36,3 +39,7 @@ async def chat_stream(request: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+@router.post("/structured", response_model=LearningExplanation)
+async def structured_chat(request: ChatRequest):
+    return await generate_learning_explanation(request.message)

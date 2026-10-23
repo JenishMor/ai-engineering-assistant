@@ -1,5 +1,6 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.config import GEMINI_MODEL
+from app.schemas.learning import LearningExplanation
 
 llm = ChatGoogleGenerativeAI(
     model=GEMINI_MODEL,
@@ -28,3 +29,17 @@ async def stream_response(message: str):
         text = extract_text(chunk.content)
         if text:
             yield text
+
+structured_llm = llm.with_structured_output(
+    LearningExplanation,
+    method="json_schema",
+)
+
+async def generate_learning_explanation(
+    topic: str,
+) -> LearningExplanation:
+    return await structured_llm.ainvoke(
+        f"""Explain the following software engineering topic for a
+        developer learning AI engineering: {topic}.
+        Provide concise key points and a practical next step."""
+    )
