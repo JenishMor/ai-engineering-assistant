@@ -36,15 +36,17 @@ export default function ChatInterface() {
     event.preventDefault();
 
     const message = input.trim();
-    if (!message || loading) return;
+    if (!message || loading || !threadId) return;
 
     setInput("");
     setError("");
     setLoading(true);
 
+    // Create distinct user and assistant messages.
     setMessages((previous) => [
       ...previous,
       { role: "user", content: message },
+      { role: "assistant", content: "" },
     ]);
 
     try {
@@ -69,7 +71,7 @@ export default function ChatInterface() {
 
         setMessages((previous) =>
           previous.map((item, index) =>
-            index === previous.length - 1
+            index === previous.length - 1 && item.role === "assistant"
               ? { ...item, content: data.response }
               : item,
           ),
@@ -93,10 +95,13 @@ export default function ChatInterface() {
 
       const data: { response: string } = await response.json();
 
-      setMessages((previous) => [
-        ...previous,
-        { role: "assistant", content: data.response },
-      ]);
+      setMessages((previous) =>
+        previous.map((item, index) =>
+          index === previous.length - 1 && item.role === "assistant"
+            ? { ...item, content: data.response }
+            : item,
+        ),
+      );
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Something went wrong.",
@@ -157,32 +162,27 @@ export default function ChatInterface() {
           </div>
         )}
 
-        {messages.map((message, index) => (
-          <article key={index} className="flex gap-3">
-            <div className="mt-1 shrink-0">
-              {message.role === "user" ? (
-                <User size={20} />
-              ) : (
-                <Bot size={20} />
-              )}
-            </div>
+        {messages.map((message, index) => {
+          const isUser = message.role === "user";
 
-            <div className="min-w-0 flex-1">
-              <p className="mb-2 text-sm font-semibold">
-                {message.role === "user" ? "You" : "Assistant"}
-              </p>
-              {message.role === "assistant" ? (
-                <div className="prose prose-sm max-w-none dark:prose-invert">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {message.content}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <p className="whitespace-pre-wrap">{message.content}</p>
-              )}
+          return (
+            <div key={index}>
+              <div className="flex items-center gap-2">
+                {isUser ? (
+                  <User size={18} />
+                ) : (
+                  <Bot size={18} />
+                )}
+
+                <span>{isUser ? "You" : "Assistant"}</span>
+              </div>
+
+              <div>
+                <ReactMarkdown>{message.content}</ReactMarkdown>
+              </div>
             </div>
-          </article>
-        ))}
+          );
+        })}
 
         {loading && (
           <div className="flex items-center gap-2 text-sm text-gray-500">
