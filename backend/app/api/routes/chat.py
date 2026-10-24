@@ -15,6 +15,8 @@ from app.services.llm_service import run_tool_assistant
 from app.services.agent_graph import run_graph_assistant
 from app.schemas.chat import ChatAgentResponse
 
+from app.schemas.chat import GraphChatRequest
+
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -55,6 +57,9 @@ async def chat_with_tools(request: ChatRequest):
     return ChatAgentResponse(response=answer)
 
 @router.post("/graph", response_model=ChatAgentResponse)
-async def chat_with_graph(request: ChatRequest):
-    answer = await run_graph_assistant(request.message)
+async def chat_with_graph(request: GraphChatRequest):
+    answer = await run_graph_assistant(
+        message=request.message,
+        thread_id=request.thread_id,
+    )
     return ChatAgentResponse(response=answer)

@@ -1,5 +1,6 @@
 
 from langchain_core.messages import HumanMessage
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition
 
@@ -29,12 +30,15 @@ builder.add_conditional_edges(
 
 builder.add_edge("tools", "llm")
 
-agent_graph = builder.compile()
+# Development-only persistence; survives requests, not process restarts.
+checkpointer = InMemorySaver()
+agent_graph = builder.compile(checkpointer=checkpointer)
 
-async def run_graph_assistant(message: str) -> str:
-    result = await agent_graph.ainvoke({
-        "messages": [HumanMessage(content=message)]
-    })
+async def run_graph_assistant(message: str, thread_id: str) -> str:
+    result = await agent_graph.ainvoke(
+        {"messages": [HumanMessage(content=message)]},
+        config={"configurable": {"thread_id": thread_id}},
+    )
 
     content = result["messages"][-1].content
 
