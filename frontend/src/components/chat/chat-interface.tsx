@@ -1,7 +1,7 @@
 
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Send, Bot, User, LoaderCircle } from "lucide-react";
@@ -12,10 +12,25 @@ type Message = {
 };
 
 export default function ChatInterface() {
+  type ChatMode = "chat" | "agent";
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mode, setMode] = useState<ChatMode>("chat");
+  const [threadId, setThreadId] = useState("");
+
+  useEffect(() => {
+    let id = sessionStorage.getItem("ai-assistant-thread-id");
+
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem("ai-assistant-thread-id", id);
+    }
+
+    setThreadId(id);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,6 +48,36 @@ export default function ChatInterface() {
     ]);
 
     try {
+      if (mode === "agent") {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/chat/graph`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message,
+              thread_id: threadId,
+            }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Agent request failed (${response.status})`);
+        }
+
+        const data: { response: string } = await response.json();
+
+        setMessages((previous) =>
+          previous.map((item, index) =>
+            index === previous.length - 1
+              ? { ...item, content: data.response }
+              : item,
+          ),
+        );
+
+        return;
+      }
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/chat`,
         {
@@ -69,6 +114,34 @@ export default function ChatInterface() {
           Learn, explore, and solve engineering problems with AI.
         </p>
       </header>
+
+      <div className="mb-6 inline-flex gap-1 rounded-xl border border-zinc-700 bg-zinc-900 p-1">
+        <button
+          type="button"
+          onClick={() => setMode("chat")}
+          aria-pressed={mode === "chat"}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            mode === "chat"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
+          }`}
+        >
+          Standard Chat
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setMode("agent")}
+          aria-pressed={mode === "agent"}
+          className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            mode === "agent"
+              ? "bg-blue-600 text-white shadow-sm"
+              : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
+          }`}
+        >
+          LangGraph Agent
+        </button>
+      </div>
 
       <section
         aria-live="polite"
@@ -137,7 +210,7 @@ export default function ChatInterface() {
           />
           <button
             type="submit"
-            disabled={loading || !input.trim()}
+            disabled={loading || !input.trim() || !threadId}
             aria-label="Send message"
             className="rounded-lg bg-black p-3 text-white disabled:opacity-40"
           >
